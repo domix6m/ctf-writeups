@@ -1,0 +1,1 @@
+Lista zadań które roziwazałem
