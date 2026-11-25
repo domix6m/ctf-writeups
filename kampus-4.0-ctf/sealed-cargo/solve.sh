@@ -1,0 +1,12 @@
+# 1) rozpakowanie obrazu i konwersja na raw
+ls -la "/home/parallels/Downloads/forensics_[medium]-sealed-cargo/" && xz -dkc "/home/parallels/Downloads/forensics_[medium]-sealed-cargo/skeld-storage.qcow2.xz" > disk.qcow2 && qemu-img info disk.qcow2 && qemu-img convert -O raw disk.qcow2 disk.raw && ls -la && fdisk -l disk.raw; file -s disk.raw
+# 2) wycięcie partycji i listing plików
+dd if=disk.raw of=p3.img bs=512 skip=239616 count=2381791 2>/dev/null; dd if=disk.raw of=p1.img bs=512 skip=2048 count=235520 2>/dev/null; fls -r -p p3.img | grep -vE "^(r|d)/. .*(usr/|lib/|etc/ssl|share/)" | grep -v " usr/" | head -300 | cut -c1-150; echo; fls -r -p p1.img | head -40
+# 2b) pełna lista plików do fls.txt
+fls -r -p p3.img > fls.txt; grep -vE "	(usr|lib|etc/ssl|etc/apk|sbin|bin|var/cache/apk|lib/apk)/" fls.txt | grep -vE "	(usr|lib|bin|sbin)$" | grep -v "var/lib/containers/storage/overlay/.*/diff/(usr|lib|bin|sbin|etc)/" | cut -c1-160 | head -200; wc -l fls.txt; icat p3.img 34705
+# 3) manifest .sealed i notka
+icat p3.img 35249; echo ===; icat p3.img 34706 > sealed.bin; ls -l sealed.bin; xxd sealed.bin | head -20; file sealed.bin; echo ===; grep "storage/overlay/" fls.txt | grep -v 75f1d9657d88 | grep -vE "/diff/(usr|lib|bin|sbin|etc/apk|etc/ssl)/" | cut -c1-200 | head -80; echo; grep -E "\* " fls.txt | grep -v "\.apk\.\|usr/lib/\^" | head -30
+# 4) skrypty z warstw overlay i klucz z niższej warstwy
+for i in 35421 35422; do echo "=== $i"; icat p3.img $i; done; echo "=== pub"; icat p3.img 35460; echo "=== priv"; icat p3.img 35457 | xxd | head; icat p3.img 35457 | wc -c; grep "storage/overlay/" fls.txt | grep -E "bc063d38|^.{0,12}(5|6)" | grep -v 75f1d | awk -F'\t' '{print $1"\t"$2}' | grep -E "bc063d38|/diff/(opt|cargo|root|tmp|home)" | cut -c1-200; grep "/diff/cargo\|_data\|merged/" fls.txt | cut -c1-200 | head
+# 5) odszyfrowanie: RSA-OAEP (klucz AES+IV) i AES-256-CBC
+icat p3.img 35457 > priv.der && icat p3.img 35460 > pub.pem && openssl pkey -inform DER -in priv.der -pubout | diff - pub.pem && echo KEY_MATCH; dd if=sealed.bin bs=1 skip=5 count=256 status=none > wrap.bin; tail -c +262 sealed.bin > body.bin; openssl pkeyutl -decrypt -inkey priv.der -keyform DER -pkeyopt rsa_padding_mode:oaep -in wrap.bin -out kiv.bin && K=$(head -c32 kiv.bin|xxd -p -c64) && IV=$(tail -c16 kiv.bin|xxd -p) && openssl enc -d -aes-256-cbc -K $K -iv $IV -in body.bin -out manifest.csv && wc -l manifest.csv && head -5 manifest.csv && grep -n -iE "zeroday|flag|\{" manifest.csv | head

